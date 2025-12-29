@@ -93,6 +93,16 @@ async function* _canvas(width,d3,land,borders,countries,activeStartCountry,activ
   const arcColor = "#111";
   const originColor = "#f03";
   const destinationColor = "#2a9d8f";
+  const rotationSensitivity = 0.25;
+  const minPhi = -80;
+  const maxPhi = 80;
+  let isDragging = false;
+  let isAnimating = false;
+  let pointerId = null;
+  let pointerStart = null;
+  let startRotation = null;
+  let currentArc = null;
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
   function drawPlane(point, nextPoint) {
     if (!point || !nextPoint) return;
@@ -115,6 +125,9 @@ async function* _canvas(width,d3,land,borders,countries,activeStartCountry,activ
   }
 
   function render(arc, planePosition, nextPlanePosition) {
+    if (arc !== undefined) {
+      currentArc = arc;
+    }
     context.clearRect(0, 0, width, height);
     context.beginPath(), path(land), context.fillStyle = "#ccc", context.fill();
     if (origin) {
@@ -125,14 +138,52 @@ async function* _canvas(width,d3,land,borders,countries,activeStartCountry,activ
     }
     context.beginPath(), path(borders), context.strokeStyle = "#fff", context.lineWidth = 0.5, context.stroke();
     context.beginPath(), path({type: "Sphere"}), context.strokeStyle = "#000", context.lineWidth = 1.5, context.stroke();
-    if (arc) {
-      context.beginPath(), path(arc), context.strokeStyle = arcColor, context.stroke();
+    if (currentArc) {
+      context.beginPath(), path(currentArc), context.strokeStyle = arcColor, context.stroke();
     }
     if (planePosition) {
       drawPlane(planePosition, nextPlanePosition);
     }
     return context.canvas;
   }
+
+  const node = canvas.node();
+
+  function endDrag(event) {
+    if (pointerId !== null && event && event.pointerId !== pointerId) return;
+    if (pointerId !== null) {
+      node.releasePointerCapture(pointerId);
+    }
+    isDragging = false;
+    pointerId = null;
+    pointerStart = null;
+    startRotation = null;
+  }
+
+  function moveDrag(event) {
+    if (!isDragging || pointerId === null || event.pointerId !== pointerId) return;
+    const dx = event.clientX - pointerStart[0];
+    const dy = event.clientY - pointerStart[1];
+    const newLambda = startRotation[0] + dx * rotationSensitivity;
+    const newPhi = clamp(startRotation[1] - dy * rotationSensitivity, minPhi, maxPhi);
+    projection.rotate([newLambda, newPhi, startRotation[2]]);
+    render();
+  }
+
+  function startDrag(event) {
+    if (isAnimating) return;
+    pointerId = event.pointerId;
+    node.setPointerCapture(pointerId);
+    isDragging = true;
+    pointerStart = [event.clientX, event.clientY];
+    startRotation = projection.rotate();
+  }
+
+  node.addEventListener("pointerdown", startDrag);
+  node.addEventListener("pointermove", moveDrag);
+  node.addEventListener("pointerup", endDrag);
+  node.addEventListener("pointercancel", endDrag);
+  node.addEventListener("pointerleave", endDrag);
 
   routeName.value = origin && destination ? `${formatCountryName(origin.properties.name)} → ${formatCountryName(destination.properties.name)}` : "選擇國家";
 
@@ -142,6 +193,8 @@ async function* _canvas(width,d3,land,borders,countries,activeStartCountry,activ
 
   const ip = d3.geoInterpolate(p1, p2);
   const iv = Versor.interpolateAngles(r1, r2);
+
+  isAnimating = true;
 
   await d3.transition()
       .duration(2000)
@@ -153,6 +206,8 @@ async function* _canvas(width,d3,land,borders,countries,activeStartCountry,activ
       })
       .end();
   
+  isAnimating = false;
+  currentArc = null;
   render();
 
   // After completing the flight, preset the next start to the current destination.
