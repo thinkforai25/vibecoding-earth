@@ -10,24 +10,35 @@ function _2(html,name){return(
 html`<b style="display:block;text-align:center;line-height:33px;">目前路線：${name}`
 )}
 
-function _controls(html,countryOptions,startCountry,endCountry,$0,$1,formatCountryName)
+function _controls(html,countryOptions,startCountrySelection,endCountrySelection,$0,$1,$2,$3,formatCountryName)
 {
   const container = html`<div style="display:flex;gap:0.75rem;justify-content:center;align-items:center;flex-wrap:wrap;margin:0.5rem 0 1rem 0;font:14px/20px var(--sans-serif);">
     <label style="display:flex;gap:0.4rem;align-items:center;">
       <span>從</span>
-      <select name="start">${countryOptions.map(country => `<option value="${country}">${formatCountryName(country)}</option>`).join("")}</select>
+      <select name="start">
+        ${countryOptions.map(country => `<option value="${country}">${formatCountryName(country)}</option>`).join("")}
+      </select>
     </label>
     <label style="display:flex;gap:0.4rem;align-items:center;">
       <span>到</span>
-      <select name="end">${countryOptions.map(country => `<option value="${country}">${formatCountryName(country)}</option>`).join("")}</select>
+      <select name="end">
+        <option value="">請選擇到達地</option>
+        ${countryOptions.map(country => `<option value="${country}">${formatCountryName(country)}</option>`).join("")}
+      </select>
     </label>
+    <button type="button" style="padding:0.4rem 0.9rem;border:1px solid #ccc;border-radius:6px;background:#111;color:#fff;cursor:pointer;">查詢</button>
   </div>`;
 
   const startSelect = container.querySelector('select[name="start"]');
   const endSelect = container.querySelector('select[name="end"]');
+  const searchButton = container.querySelector("button");
 
-  if (startCountry) startSelect.value = startCountry;
-  if (endCountry) endSelect.value = endCountry;
+  if (startCountrySelection) startSelect.value = startCountrySelection;
+  if (endCountrySelection) {
+    endSelect.value = endCountrySelection;
+  } else {
+    endSelect.value = "";
+  }
 
   startSelect.addEventListener("change", event => {
     $0.value = event.target.value;
@@ -37,10 +48,18 @@ function _controls(html,countryOptions,startCountry,endCountry,$0,$1,formatCount
     $1.value = event.target.value;
   });
 
+  searchButton.addEventListener("click", () => {
+    const startValue = startSelect.value;
+    const endValue = endSelect.value;
+    if (!startValue || !endValue) return;
+    $2.value = startValue;
+    $3.value = endValue;
+  });
+
   return container;
 }
 
-async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,routeName,startCountryState,Versor,formatCountryName)
+async function* _canvas(width,d3,land,borders,countries,activeStartCountry,activeEndCountry,routeName,startCountrySelectionState,endCountrySelectionState,Versor,formatCountryName)
 {
   // Specify the chart’s dimensions.
   const height = Math.min(width, 720); // Observable sets a responsive *width*
@@ -59,8 +78,8 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
   const path = d3.geoPath(projection, context);
   const tilt = 20;
 
-  const origin = countries.find(country => country.properties.name === startCountry) ?? countries[0];
-  const destination = countries.find(country => country.properties.name === endCountry) ?? origin;
+  const origin = countries.find(country => country.properties.name === activeStartCountry);
+  const destination = countries.find(country => country.properties.name === activeEndCountry);
 
   const p1 = origin ? d3.geoCentroid(origin) : [0, 0];
   const p2 = destination ? d3.geoCentroid(destination) : p1;
@@ -137,8 +156,9 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
   render();
 
   // After completing the flight, preset the next start to the current destination.
-  if (endCountry && startCountry !== endCountry) {
-    startCountryState.value = endCountry;
+  if (destination) {
+    startCountrySelectionState.value = destination.properties.name;
+    endCountrySelectionState.value = "";
   }
 }
 
@@ -398,12 +418,20 @@ function _countryOptions(countries){return(
 countries.map(country => country.properties.name).sort((a, b) => a.localeCompare(b))
 )}
 
-function _initialStartCountry(countryOptions){return(
+function _initialStartCountrySelection(countryOptions){return(
 countryOptions[0] ?? ""
 )}
 
-function _initialEndCountry(countryOptions){return(
-countryOptions[1] ?? countryOptions[0] ?? ""
+function _initialEndCountrySelection(){return(
+""
+)}
+
+function _initialActiveStartCountry(){return(
+""
+)}
+
+function _initialActiveEndCountry(){return(
+""
 )}
 
 function _countries(topojson,world){return(
@@ -430,9 +458,9 @@ export default function define(runtime, observer) {
   ]);
   main.builtin("FileAttachment", runtime.fileAttachments(name => fileAttachments.get(name)));
   main.variable(observer()).define(["md"], _1);
-  main.variable(observer("controls")).define("controls", ["html","countryOptions","startCountry","endCountry","mutable startCountry","mutable endCountry","formatCountryName"], _controls);
+  main.variable(observer("controls")).define("controls", ["html","countryOptions","startCountrySelection","endCountrySelection","mutable startCountrySelection","mutable endCountrySelection","mutable activeStartCountry","mutable activeEndCountry","formatCountryName"], _controls);
   main.variable(observer()).define(["html","name"], _2);
-  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","startCountry","endCountry","mutable name","mutable startCountry","Versor","formatCountryName"], _canvas);
+  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","activeStartCountry","activeEndCountry","mutable name","mutable startCountrySelection","mutable endCountrySelection","Versor","formatCountryName"], _canvas);
   main.variable(observer("Versor")).define("Versor", _Versor);
   main.define("initial name", _name);
   main.variable(observer("mutable name")).define("mutable name", ["Mutable", "initial name"], (M, _) => new M(_));
@@ -440,12 +468,18 @@ export default function define(runtime, observer) {
   main.variable(observer("countryTranslations")).define("countryTranslations", _countryTranslations);
   main.variable(observer("formatCountryName")).define("formatCountryName", ["countryTranslations"], _formatCountryName);
   main.variable(observer("countryOptions")).define("countryOptions", ["countries"], _countryOptions);
-  main.define("initial startCountry", ["countryOptions"], _initialStartCountry);
-  main.variable(observer("mutable startCountry")).define("mutable startCountry", ["Mutable", "initial startCountry"], (M, _) => new M(_));
-  main.variable(observer("startCountry")).define("startCountry", ["mutable startCountry"], _ => _.generator);
-  main.define("initial endCountry", ["countryOptions"], _initialEndCountry);
-  main.variable(observer("mutable endCountry")).define("mutable endCountry", ["Mutable", "initial endCountry"], (M, _) => new M(_));
-  main.variable(observer("endCountry")).define("endCountry", ["mutable endCountry"], _ => _.generator);
+  main.define("initial startCountrySelection", ["countryOptions"], _initialStartCountrySelection);
+  main.variable(observer("mutable startCountrySelection")).define("mutable startCountrySelection", ["Mutable", "initial startCountrySelection"], (M, _) => new M(_));
+  main.variable(observer("startCountrySelection")).define("startCountrySelection", ["mutable startCountrySelection"], _ => _.generator);
+  main.define("initial endCountrySelection", _initialEndCountrySelection);
+  main.variable(observer("mutable endCountrySelection")).define("mutable endCountrySelection", ["Mutable", "initial endCountrySelection"], (M, _) => new M(_));
+  main.variable(observer("endCountrySelection")).define("endCountrySelection", ["mutable endCountrySelection"], _ => _.generator);
+  main.define("initial activeStartCountry", _initialActiveStartCountry);
+  main.variable(observer("mutable activeStartCountry")).define("mutable activeStartCountry", ["Mutable", "initial activeStartCountry"], (M, _) => new M(_));
+  main.variable(observer("activeStartCountry")).define("activeStartCountry", ["mutable activeStartCountry"], _ => _.generator);
+  main.define("initial activeEndCountry", _initialActiveEndCountry);
+  main.variable(observer("mutable activeEndCountry")).define("mutable activeEndCountry", ["Mutable", "initial activeEndCountry"], (M, _) => new M(_));
+  main.variable(observer("activeEndCountry")).define("activeEndCountry", ["mutable activeEndCountry"], _ => _.generator);
   main.variable(observer("countries")).define("countries", ["topojson","world"], _countries);
   main.variable(observer("borders")).define("borders", ["topojson","world"], _borders);
   main.variable(observer("land")).define("land", ["topojson","world"], _land);
