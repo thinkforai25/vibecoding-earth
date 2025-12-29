@@ -9,6 +9,13 @@ import define from "./index.js";
 import {Runtime, Library, Inspector} from "./runtime.js";
 
 const runtime = new Runtime();
-const main = runtime.module(define, Inspector.into(document.body));
+const showCells = new Set(["controls", "canvas"]);
+const inspector = Inspector.into(document.body);
+const main = runtime.module(define, name => {
+  if (name == null || showCells.has(name)) {
+    return inspector(name);
+  }
+  return null;
+});
 
 </script>
