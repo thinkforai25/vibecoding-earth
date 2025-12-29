@@ -40,7 +40,7 @@ function _controls(html,countryOptions,startCountry,endCountry,$0,$1,formatCount
   return container;
 }
 
-async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,$0,Versor,formatCountryName)
+async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,routeName,startCountryState,Versor,formatCountryName)
 {
   // Specify the chart’s dimensions.
   const height = Math.min(width, 720); // Observable sets a responsive *width*
@@ -115,7 +115,7 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
     return context.canvas;
   }
 
-  $0.value = origin && destination ? `${formatCountryName(origin.properties.name)} → ${formatCountryName(destination.properties.name)}` : "選擇國家";
+  routeName.value = origin && destination ? `${formatCountryName(origin.properties.name)} → ${formatCountryName(destination.properties.name)}` : "選擇國家";
 
   yield render(null, p1, p2);
 
@@ -135,6 +135,11 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
       .end();
   
   render();
+
+  // After completing the flight, preset the next start to the current destination.
+  if (endCountry && startCountry !== endCountry) {
+    startCountryState.value = endCountry;
+  }
 }
 
 
@@ -427,7 +432,7 @@ export default function define(runtime, observer) {
   main.variable(observer()).define(["md"], _1);
   main.variable(observer("controls")).define("controls", ["html","countryOptions","startCountry","endCountry","mutable startCountry","mutable endCountry","formatCountryName"], _controls);
   main.variable(observer()).define(["html","name"], _2);
-  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","startCountry","endCountry","mutable name","Versor","formatCountryName"], _canvas);
+  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","startCountry","endCountry","mutable name","mutable startCountry","Versor","formatCountryName"], _canvas);
   main.variable(observer("Versor")).define("Versor", _Versor);
   main.define("initial name", _name);
   main.variable(observer("mutable name")).define("mutable name", ["Mutable", "initial name"], (M, _) => new M(_));
