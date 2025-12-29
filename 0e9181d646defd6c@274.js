@@ -47,7 +47,7 @@ function _canvas(width,d3,land,borders,countries,$0)
   d3.select(canvas.node()).call(
     d3.drag()
       .on("start", (event) => {
-        const point = projection.invert(event);
+        const point = projection.invert([event.x, event.y]);
         updateCountryLabel(point);
         event.subject = {
           lastX: event.x,
@@ -62,7 +62,7 @@ function _canvas(width,d3,land,borders,countries,$0)
         const newRotate = [rotate[0] + dx * rotationSensitivity, rotate[1] - dy * rotationSensitivity, rotate[2]];
         projection.rotate(newRotate);
         render();
-        updateCountryLabel(projection.invert(event));
+        updateCountryLabel(projection.invert([event.x, event.y]));
         event.subject.lastX = event.x;
         event.subject.lastY = event.y;
         event.subject.rotate = newRotate;
