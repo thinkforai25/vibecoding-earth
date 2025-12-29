@@ -7,10 +7,40 @@ This animation uses [d3.geoInterpolate](https://d3js.org/d3-geo/math#geoInterpol
 )}
 
 function _2(html,name){return(
-html`<b style="display:block;text-align:center;line-height:33px;">${name}`
+html`<b style="display:block;text-align:center;line-height:33px;">目前路線：${name}`
 )}
 
-async function* _canvas(width,d3,land,borders,countries,$0,Versor)
+function _controls(html,countryOptions,startCountry,endCountry,$0,$1)
+{
+  const container = html`<div style="display:flex;gap:0.75rem;justify-content:center;align-items:center;flex-wrap:wrap;margin:0.5rem 0 1rem 0;font:14px/20px var(--sans-serif);">
+    <label style="display:flex;gap:0.4rem;align-items:center;">
+      <span>從</span>
+      <select name="start">${countryOptions.map(country => `<option value="${country}">${country}</option>`).join("")}</select>
+    </label>
+    <label style="display:flex;gap:0.4rem;align-items:center;">
+      <span>到</span>
+      <select name="end">${countryOptions.map(country => `<option value="${country}">${country}</option>`).join("")}</select>
+    </label>
+  </div>`;
+
+  const startSelect = container.querySelector('select[name="start"]');
+  const endSelect = container.querySelector('select[name="end"]');
+
+  if (startCountry) startSelect.value = startCountry;
+  if (endCountry) endSelect.value = endCountry;
+
+  startSelect.addEventListener("change", event => {
+    $0.value = event.target.value;
+  });
+
+  endSelect.addEventListener("change", event => {
+    $1.value = event.target.value;
+  });
+
+  return container;
+}
+
+async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,$0,Versor)
 {
   // Specify the chart’s dimensions.
   const height = Math.min(width, 720); // Observable sets a responsive *width*
@@ -29,38 +59,59 @@ async function* _canvas(width,d3,land,borders,countries,$0,Versor)
   const path = d3.geoPath(projection, context);
   const tilt = 20;
 
-  function render(country, arc) {
+  const origin = countries.find(country => country.properties.name === startCountry) ?? countries[0];
+  const destination = countries.find(country => country.properties.name === endCountry) ?? origin;
+
+  const p1 = origin ? d3.geoCentroid(origin) : [0, 0];
+  const p2 = destination ? d3.geoCentroid(destination) : p1;
+  const r1 = origin ? [-p1[0], tilt - p1[1], 0] : [0, tilt, 0];
+  const r2 = destination ? [-p2[0], tilt - p2[1], 0] : r1;
+
+  if (origin) {
+    projection.rotate(r1);
+  }
+
+  const arcColor = "#111";
+  const originColor = "#f03";
+  const destinationColor = "#2a9d8f";
+
+  function render(arc) {
     context.clearRect(0, 0, width, height);
     context.beginPath(), path(land), context.fillStyle = "#ccc", context.fill();
-    context.beginPath(), path(country), context.fillStyle = "#f00", context.fill();
+    if (origin) {
+      context.beginPath(), path(origin), context.fillStyle = originColor, context.fill();
+    }
+    if (destination) {
+      context.beginPath(), path(destination), context.fillStyle = destinationColor, context.fill();
+    }
     context.beginPath(), path(borders), context.strokeStyle = "#fff", context.lineWidth = 0.5, context.stroke();
     context.beginPath(), path({type: "Sphere"}), context.strokeStyle = "#000", context.lineWidth = 1.5, context.stroke();
-    context.beginPath(), path(arc), context.stroke();
+    if (arc) {
+      context.beginPath(), path(arc), context.strokeStyle = arcColor, context.stroke();
+    }
     return context.canvas;
   }
 
-  let p1, p2 = [0, 0], r1, r2 = [0, 0, 0];
-  for (const country of countries) {
-    $0.value = country.properties.name;
-    yield render(country);
+  $0.value = origin && destination ? `${origin.properties.name} → ${destination.properties.name}` : "選擇國家";
 
-    p1 = p2, p2 = d3.geoCentroid(country);
-    r1 = r2, r2 = [-p2[0], tilt - p2[1], 0];
-    const ip = d3.geoInterpolate(p1, p2);
-    const iv = Versor.interpolateAngles(r1, r2);
+  yield render();
 
-    await d3.transition()
-        .duration(1250)
-        .tween("render", () => t => {
-          projection.rotate(iv(t));
-          render(country, {type: "LineString", coordinates: [p1, ip(t)]});
-        })
-      .transition()
-        .tween("render", () => t => {
-          render(country, {type: "LineString", coordinates: [ip(t), p2]});
-        })
-      .end();
-  }
+  if (!origin || !destination || origin === destination) return;
+
+  const ip = d3.geoInterpolate(p1, p2);
+  const iv = Versor.interpolateAngles(r1, r2);
+
+  await d3.transition()
+      .duration(1250)
+      .tween("render", () => t => {
+        projection.rotate(iv(t));
+        render({type: "LineString", coordinates: [p1, ip(t)]});
+      })
+    .transition()
+      .tween("render", () => t => {
+        render({type: "LineString", coordinates: [ip(t), p2]});
+      })
+    .end();
 }
 
 
@@ -126,6 +177,18 @@ function _name(){return(
 ""
 )}
 
+function _countryOptions(countries){return(
+countries.map(country => country.properties.name).sort((a, b) => a.localeCompare(b))
+)}
+
+function _initialStartCountry(countryOptions){return(
+countryOptions[0] ?? ""
+)}
+
+function _initialEndCountry(countryOptions){return(
+countryOptions[1] ?? countryOptions[0] ?? ""
+)}
+
 function _countries(topojson,world){return(
 topojson.feature(world, world.objects.countries).features
 )}
@@ -150,12 +213,20 @@ export default function define(runtime, observer) {
   ]);
   main.builtin("FileAttachment", runtime.fileAttachments(name => fileAttachments.get(name)));
   main.variable(observer()).define(["md"], _1);
+  main.variable(observer("controls")).define("controls", ["html","countryOptions","startCountry","endCountry","mutable startCountry","mutable endCountry"], _controls);
   main.variable(observer()).define(["html","name"], _2);
-  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","mutable name","Versor"], _canvas);
+  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","startCountry","endCountry","mutable name","Versor"], _canvas);
   main.variable(observer("Versor")).define("Versor", _Versor);
   main.define("initial name", _name);
   main.variable(observer("mutable name")).define("mutable name", ["Mutable", "initial name"], (M, _) => new M(_));
   main.variable(observer("name")).define("name", ["mutable name"], _ => _.generator);
+  main.variable(observer("countryOptions")).define("countryOptions", ["countries"], _countryOptions);
+  main.define("initial startCountry", ["countryOptions"], _initialStartCountry);
+  main.variable(observer("mutable startCountry")).define("mutable startCountry", ["Mutable", "initial startCountry"], (M, _) => new M(_));
+  main.variable(observer("startCountry")).define("startCountry", ["mutable startCountry"], _ => _.generator);
+  main.define("initial endCountry", ["countryOptions"], _initialEndCountry);
+  main.variable(observer("mutable endCountry")).define("mutable endCountry", ["Mutable", "initial endCountry"], (M, _) => new M(_));
+  main.variable(observer("endCountry")).define("endCountry", ["mutable endCountry"], _ => _.generator);
   main.variable(observer("countries")).define("countries", ["topojson","world"], _countries);
   main.variable(observer("borders")).define("borders", ["topojson","world"], _borders);
   main.variable(observer("land")).define("land", ["topojson","world"], _land);
