@@ -133,6 +133,8 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
         render({type: "LineString", coordinates: [p1, planePosition]}, planePosition, nextPlanePosition);
       })
       .end();
+  
+  render();
 }
 
 
