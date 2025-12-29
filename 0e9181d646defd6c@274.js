@@ -75,7 +75,27 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
   const originColor = "#f03";
   const destinationColor = "#2a9d8f";
 
-  function render(arc) {
+  function drawPlane(point, nextPoint) {
+    if (!point || !nextPoint) return;
+    const [x, y] = projection(point) || [];
+    const [nx, ny] = projection(nextPoint) || [];
+    if (x == null || y == null || nx == null || ny == null) return;
+    const angle = Math.atan2(ny - y, nx - x);
+    const size = 12;
+    context.save();
+    context.translate(x, y);
+    context.rotate(angle);
+    context.beginPath();
+    context.moveTo(-size * 0.6, -size * 0.35);
+    context.lineTo(size * 0.7, 0);
+    context.lineTo(-size * 0.6, size * 0.35);
+    context.closePath();
+    context.fillStyle = "#1e88e5";
+    context.fill();
+    context.restore();
+  }
+
+  function render(arc, planePosition, nextPlanePosition) {
     context.clearRect(0, 0, width, height);
     context.beginPath(), path(land), context.fillStyle = "#ccc", context.fill();
     if (origin) {
@@ -89,12 +109,15 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
     if (arc) {
       context.beginPath(), path(arc), context.strokeStyle = arcColor, context.stroke();
     }
+    if (planePosition) {
+      drawPlane(planePosition, nextPlanePosition);
+    }
     return context.canvas;
   }
 
   $0.value = origin && destination ? `${formatCountryName(origin.properties.name)} → ${formatCountryName(destination.properties.name)}` : "選擇國家";
 
-  yield render();
+  yield render(null, p1, p2);
 
   if (!origin || !destination || origin === destination) return;
 
@@ -102,16 +125,16 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
   const iv = Versor.interpolateAngles(r1, r2);
 
   await d3.transition()
-      .duration(1250)
+      .duration(2000)
       .tween("render", () => t => {
+        const planePosition = ip(t);
+        const nextPlanePosition = ip(Math.min(1, t + 0.002));
         projection.rotate(iv(t));
-        render({type: "LineString", coordinates: [p1, ip(t)]});
+        render({type: "LineString", coordinates: [p1, planePosition]}, planePosition, nextPlanePosition);
       })
-    .transition()
-      .tween("render", () => t => {
-        render({type: "LineString", coordinates: [ip(t), p2]});
-      })
-    .end();
+      .end();
+  
+  render();
 }
 
 
