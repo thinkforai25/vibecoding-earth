@@ -10,16 +10,16 @@ function _2(html,name){return(
 html`<b style="display:block;text-align:center;line-height:33px;">目前路線：${name}`
 )}
 
-function _controls(html,countryOptions,startCountry,endCountry,$0,$1)
+function _controls(html,countryOptions,startCountry,endCountry,$0,$1,formatCountryName)
 {
   const container = html`<div style="display:flex;gap:0.75rem;justify-content:center;align-items:center;flex-wrap:wrap;margin:0.5rem 0 1rem 0;font:14px/20px var(--sans-serif);">
     <label style="display:flex;gap:0.4rem;align-items:center;">
       <span>從</span>
-      <select name="start">${countryOptions.map(country => `<option value="${country}">${country}</option>`).join("")}</select>
+      <select name="start">${countryOptions.map(country => `<option value="${country}">${formatCountryName(country)}</option>`).join("")}</select>
     </label>
     <label style="display:flex;gap:0.4rem;align-items:center;">
       <span>到</span>
-      <select name="end">${countryOptions.map(country => `<option value="${country}">${country}</option>`).join("")}</select>
+      <select name="end">${countryOptions.map(country => `<option value="${country}">${formatCountryName(country)}</option>`).join("")}</select>
     </label>
   </div>`;
 
@@ -40,7 +40,7 @@ function _controls(html,countryOptions,startCountry,endCountry,$0,$1)
   return container;
 }
 
-async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,$0,Versor)
+async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,$0,Versor,formatCountryName)
 {
   // Specify the chart’s dimensions.
   const height = Math.min(width, 720); // Observable sets a responsive *width*
@@ -92,7 +92,7 @@ async function* _canvas(width,d3,land,borders,countries,startCountry,endCountry,
     return context.canvas;
   }
 
-  $0.value = origin && destination ? `${origin.properties.name} → ${destination.properties.name}` : "選擇國家";
+  $0.value = origin && destination ? `${formatCountryName(origin.properties.name)} → ${formatCountryName(destination.properties.name)}` : "選擇國家";
 
   yield render();
 
@@ -177,6 +177,195 @@ function _name(){return(
 ""
 )}
 
+function _countryTranslations(){return(
+new Map([
+  ["Afghanistan", "阿富汗"],
+  ["Albania", "阿爾巴尼亞"],
+  ["Algeria", "阿爾及利亞"],
+  ["Angola", "安哥拉"],
+  ["Antarctica", "南極洲"],
+  ["Argentina", "阿根廷"],
+  ["Armenia", "亞美尼亞"],
+  ["Australia", "澳洲"],
+  ["Austria", "奧地利"],
+  ["Azerbaijan", "亞塞拜然"],
+  ["Bahamas", "巴哈馬"],
+  ["Bangladesh", "孟加拉"],
+  ["Belarus", "白俄羅斯"],
+  ["Belgium", "比利時"],
+  ["Belize", "貝里斯"],
+  ["Benin", "貝南"],
+  ["Bhutan", "不丹"],
+  ["Bolivia", "玻利維亞"],
+  ["Bosnia and Herz.", "波士尼亞與赫塞哥維納"],
+  ["Botswana", "波札那"],
+  ["Brazil", "巴西"],
+  ["Brunei", "汶萊"],
+  ["Bulgaria", "保加利亞"],
+  ["Burkina Faso", "布吉納法索"],
+  ["Burundi", "布隆迪"],
+  ["Cambodia", "柬埔寨"],
+  ["Cameroon", "喀麥隆"],
+  ["Canada", "加拿大"],
+  ["Central African Rep.", "中非共和國"],
+  ["Chad", "查德"],
+  ["Chile", "智利"],
+  ["China", "中國"],
+  ["Colombia", "哥倫比亞"],
+  ["Congo", "剛果共和國"],
+  ["Costa Rica", "哥斯大黎加"],
+  ["Croatia", "克羅埃西亞"],
+  ["Cuba", "古巴"],
+  ["Cyprus", "塞浦路斯"],
+  ["Czechia", "捷克"],
+  ["Côte d'Ivoire", "象牙海岸"],
+  ["Dem. Rep. Congo", "剛果民主共和國"],
+  ["Denmark", "丹麥"],
+  ["Djibouti", "吉布地"],
+  ["Dominican Rep.", "多明尼加共和國"],
+  ["Ecuador", "厄瓜多"],
+  ["Egypt", "埃及"],
+  ["El Salvador", "薩爾瓦多"],
+  ["Eq. Guinea", "赤道幾內亞"],
+  ["Eritrea", "厄利垂亞"],
+  ["Estonia", "愛沙尼亞"],
+  ["Ethiopia", "衣索比亞"],
+  ["Falkland Is.", "福克蘭群島"],
+  ["Fiji", "斐濟"],
+  ["Finland", "芬蘭"],
+  ["Fr. S. Antarctic Lands", "法屬南方和南極領地"],
+  ["France", "法國"],
+  ["Gabon", "加彭"],
+  ["Gambia", "甘比亞"],
+  ["Georgia", "喬治亞"],
+  ["Germany", "德國"],
+  ["Ghana", "迦納"],
+  ["Greece", "希臘"],
+  ["Greenland", "格陵蘭"],
+  ["Guatemala", "瓜地馬拉"],
+  ["Guinea", "幾內亞"],
+  ["Guinea-Bissau", "幾內亞比索"],
+  ["Guyana", "蓋亞那"],
+  ["Haiti", "海地"],
+  ["Honduras", "宏都拉斯"],
+  ["Hungary", "匈牙利"],
+  ["Iceland", "冰島"],
+  ["India", "印度"],
+  ["Indonesia", "印尼"],
+  ["Iran", "伊朗"],
+  ["Iraq", "伊拉克"],
+  ["Ireland", "愛爾蘭"],
+  ["Israel", "以色列"],
+  ["Italy", "義大利"],
+  ["Jamaica", "牙買加"],
+  ["Japan", "日本"],
+  ["Jordan", "約旦"],
+  ["Kazakhstan", "哈薩克"],
+  ["Kenya", "肯亞"],
+  ["Kosovo", "科索沃"],
+  ["Kuwait", "科威特"],
+  ["Kyrgyzstan", "吉爾吉斯"],
+  ["Laos", "寮國"],
+  ["Latvia", "拉脫維亞"],
+  ["Lebanon", "黎巴嫩"],
+  ["Lesotho", "賴索托"],
+  ["Liberia", "賴比瑞亞"],
+  ["Libya", "利比亞"],
+  ["Lithuania", "立陶宛"],
+  ["Luxembourg", "盧森堡"],
+  ["Macedonia", "北馬其頓"],
+  ["Madagascar", "馬達加斯加"],
+  ["Malawi", "馬拉威"],
+  ["Malaysia", "馬來西亞"],
+  ["Mali", "馬利"],
+  ["Mauritania", "茅利塔尼亞"],
+  ["Mexico", "墨西哥"],
+  ["Moldova", "摩爾多瓦"],
+  ["Mongolia", "蒙古"],
+  ["Montenegro", "蒙特內哥羅"],
+  ["Morocco", "摩洛哥"],
+  ["Mozambique", "莫三比克"],
+  ["Myanmar", "緬甸"],
+  ["N. Cyprus", "北賽普勒斯"],
+  ["Namibia", "納米比亞"],
+  ["Nepal", "尼泊爾"],
+  ["Netherlands", "荷蘭"],
+  ["New Caledonia", "新喀里多尼亞"],
+  ["New Zealand", "紐西蘭"],
+  ["Nicaragua", "尼加拉瓜"],
+  ["Niger", "尼日"],
+  ["Nigeria", "奈及利亞"],
+  ["North Korea", "北韓"],
+  ["Norway", "挪威"],
+  ["Oman", "阿曼"],
+  ["Pakistan", "巴基斯坦"],
+  ["Palestine", "巴勒斯坦"],
+  ["Panama", "巴拿馬"],
+  ["Papua New Guinea", "巴布亞紐幾內亞"],
+  ["Paraguay", "巴拉圭"],
+  ["Peru", "秘魯"],
+  ["Philippines", "菲律賓"],
+  ["Poland", "波蘭"],
+  ["Portugal", "葡萄牙"],
+  ["Puerto Rico", "波多黎各"],
+  ["Qatar", "卡達"],
+  ["Romania", "羅馬尼亞"],
+  ["Russia", "俄羅斯"],
+  ["Rwanda", "盧安達"],
+  ["S. Sudan", "南蘇丹"],
+  ["Saudi Arabia", "沙烏地阿拉伯"],
+  ["Senegal", "塞內加爾"],
+  ["Serbia", "塞爾維亞"],
+  ["Sierra Leone", "獅子山"],
+  ["Slovakia", "斯洛伐克"],
+  ["Slovenia", "斯洛維尼亞"],
+  ["Solomon Is.", "索羅門群島"],
+  ["Somalia", "索馬利亞"],
+  ["Somaliland", "索馬利蘭"],
+  ["South Africa", "南非"],
+  ["South Korea", "南韓"],
+  ["Spain", "西班牙"],
+  ["Sri Lanka", "斯里蘭卡"],
+  ["Sudan", "蘇丹"],
+  ["Suriname", "蘇利南"],
+  ["Sweden", "瑞典"],
+  ["Switzerland", "瑞士"],
+  ["Syria", "敘利亞"],
+  ["Taiwan", "台灣"],
+  ["Tajikistan", "塔吉克"],
+  ["Tanzania", "坦尚尼亞"],
+  ["Thailand", "泰國"],
+  ["Timor-Leste", "東帝汶"],
+  ["Togo", "多哥"],
+  ["Trinidad and Tobago", "千里達和多巴哥"],
+  ["Tunisia", "突尼西亞"],
+  ["Turkey", "土耳其"],
+  ["Turkmenistan", "土庫曼"],
+  ["Uganda", "烏干達"],
+  ["Ukraine", "烏克蘭"],
+  ["United Arab Emirates", "阿拉伯聯合大公國"],
+  ["United Kingdom", "英國"],
+  ["United States of America", "美國"],
+  ["Uruguay", "烏拉圭"],
+  ["Uzbekistan", "烏茲別克"],
+  ["Vanuatu", "萬那杜"],
+  ["Venezuela", "委內瑞拉"],
+  ["Vietnam", "越南"],
+  ["W. Sahara", "西撒哈拉"],
+  ["Yemen", "葉門"],
+  ["Zambia", "尚比亞"],
+  ["Zimbabwe", "辛巴威"],
+  ["eSwatini", "史瓦帝尼"]
+])
+)}
+
+function _formatCountryName(countryTranslations){return(
+name => {
+  const translation = countryTranslations.get(name);
+  return translation ? `${translation}（${name}）` : name;
+}
+)}
+
 function _countryOptions(countries){return(
 countries.map(country => country.properties.name).sort((a, b) => a.localeCompare(b))
 )}
@@ -213,13 +402,15 @@ export default function define(runtime, observer) {
   ]);
   main.builtin("FileAttachment", runtime.fileAttachments(name => fileAttachments.get(name)));
   main.variable(observer()).define(["md"], _1);
-  main.variable(observer("controls")).define("controls", ["html","countryOptions","startCountry","endCountry","mutable startCountry","mutable endCountry"], _controls);
+  main.variable(observer("controls")).define("controls", ["html","countryOptions","startCountry","endCountry","mutable startCountry","mutable endCountry","formatCountryName"], _controls);
   main.variable(observer()).define(["html","name"], _2);
-  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","startCountry","endCountry","mutable name","Versor"], _canvas);
+  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","startCountry","endCountry","mutable name","Versor","formatCountryName"], _canvas);
   main.variable(observer("Versor")).define("Versor", _Versor);
   main.define("initial name", _name);
   main.variable(observer("mutable name")).define("mutable name", ["Mutable", "initial name"], (M, _) => new M(_));
   main.variable(observer("name")).define("name", ["mutable name"], _ => _.generator);
+  main.variable(observer("countryTranslations")).define("countryTranslations", _countryTranslations);
+  main.variable(observer("formatCountryName")).define("formatCountryName", ["countryTranslations"], _formatCountryName);
   main.variable(observer("countryOptions")).define("countryOptions", ["countries"], _countryOptions);
   main.define("initial startCountry", ["countryOptions"], _initialStartCountry);
   main.variable(observer("mutable startCountry")).define("mutable startCountry", ["Mutable", "initial startCountry"], (M, _) => new M(_));
