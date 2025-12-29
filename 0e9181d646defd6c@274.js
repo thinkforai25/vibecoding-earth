@@ -10,12 +10,10 @@ function _2(html,name){return(
 html`<b style="display:block;text-align:center;line-height:33px;">${name}`
 )}
 
-async function* _canvas(width,d3,land,borders,countries,$0,Versor)
+function _canvas(width,d3,land,borders,countries,$0)
 {
-  // Specify the chart’s dimensions.
-  const height = Math.min(width, 720); // Observable sets a responsive *width*
+  const height = Math.min(width, 720);
 
-  // Prepare a canvas.
   const dpr = window.devicePixelRatio ?? 1;
   const canvas = d3.create("canvas")
       .attr("width", dpr * width)
@@ -24,43 +22,55 @@ async function* _canvas(width,d3,land,borders,countries,$0,Versor)
   const context = canvas.node().getContext("2d");
   context.scale(dpr, dpr);
 
-  // Create a projection and a path generator.
   const projection = d3.geoOrthographic().fitExtent([[10, 10], [width - 10, height - 10]], {type: "Sphere"});
+  projection.rotate([0, 20, 0]);
   const path = d3.geoPath(projection, context);
-  const tilt = 20;
 
-  function render(country, arc) {
+  function render() {
     context.clearRect(0, 0, width, height);
     context.beginPath(), path(land), context.fillStyle = "#ccc", context.fill();
-    context.beginPath(), path(country), context.fillStyle = "#f00", context.fill();
     context.beginPath(), path(borders), context.strokeStyle = "#fff", context.lineWidth = 0.5, context.stroke();
     context.beginPath(), path({type: "Sphere"}), context.strokeStyle = "#000", context.lineWidth = 1.5, context.stroke();
-    context.beginPath(), path(arc), context.stroke();
     return context.canvas;
   }
 
-  let p1, p2 = [0, 0], r1, r2 = [0, 0, 0];
-  for (const country of countries) {
-    $0.value = country.properties.name;
-    yield render(country);
-
-    p1 = p2, p2 = d3.geoCentroid(country);
-    r1 = r2, r2 = [-p2[0], tilt - p2[1], 0];
-    const ip = d3.geoInterpolate(p1, p2);
-    const iv = Versor.interpolateAngles(r1, r2);
-
-    await d3.transition()
-        .duration(1250)
-        .tween("render", () => t => {
-          projection.rotate(iv(t));
-          render(country, {type: "LineString", coordinates: [p1, ip(t)]});
-        })
-      .transition()
-        .tween("render", () => t => {
-          render(country, {type: "LineString", coordinates: [ip(t), p2]});
-        })
-      .end();
+  function updateCountryLabel(point) {
+    if (!point) {
+      $0.value = "";
+      return;
+    }
+    const match = countries.find(country => d3.geoContains(country, point));
+    $0.value = match ? match.properties.name : "";
   }
+
+  const rotationSensitivity = 0.25;
+  d3.select(canvas.node()).call(
+    d3.drag()
+      .on("start", (event) => {
+        const point = projection.invert(event);
+        updateCountryLabel(point);
+        event.subject = {
+          lastX: event.x,
+          lastY: event.y,
+          rotate: projection.rotate()
+        };
+      })
+      .on("drag", (event) => {
+        const {lastX, lastY, rotate} = event.subject;
+        const dx = event.x - lastX;
+        const dy = event.y - lastY;
+        const newRotate = [rotate[0] + dx * rotationSensitivity, rotate[1] - dy * rotationSensitivity, rotate[2]];
+        projection.rotate(newRotate);
+        render();
+        updateCountryLabel(projection.invert(event));
+        event.subject.lastX = event.x;
+        event.subject.lastY = event.y;
+        event.subject.rotate = newRotate;
+      })
+  );
+
+  render();
+  return context.canvas;
 }
 
 
@@ -151,7 +161,7 @@ export default function define(runtime, observer) {
   main.builtin("FileAttachment", runtime.fileAttachments(name => fileAttachments.get(name)));
   main.variable(observer()).define(["md"], _1);
   main.variable(observer()).define(["html","name"], _2);
-  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","mutable name","Versor"], _canvas);
+  main.variable(observer("canvas")).define("canvas", ["width","d3","land","borders","countries","mutable name"], _canvas);
   main.variable(observer("Versor")).define("Versor", _Versor);
   main.define("initial name", _name);
   main.variable(observer("mutable name")).define("mutable name", ["Mutable", "initial name"], (M, _) => new M(_));
